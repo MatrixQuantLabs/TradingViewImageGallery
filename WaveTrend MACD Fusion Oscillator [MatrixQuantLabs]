@@ -1,0 +1,252 @@
+
+//  __  __         _          _         ___                        _   
+// |  \/  |  __ _ | |_  _ __ (_)__  __ / _ \  _   _   __ _  _ __  | |_ 
+// | |\/| | / _` || __|| '__|| |\ \/ /| | | || | | | / _` || '_ \ | __|
+// | |  | || (_| || |_ | |   | | >  < | |_| || |_| || (_| || | | || |_ 
+// |_|  |_| \__,_| \__||_|   |_|/_/\_\ \__\_\ \__,_| \__,_||_| |_| \__|
+// 
+// This Pine Script® code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © MatrixQuantLabs
+//
+//@version=6
+indicator(title = 'WaveTrend MACD Fusion Oscillator [MatrixQuantLabs]', overlay = false)
+
+
+// Overbought area
+OverboughtLine1 = hline(100, color=color.new(color.green, 0), linestyle=hline.style_solid, title='Overbought Upper Band丨超买上轨')
+OverboughtLine2 = hline(80, color=color.new(color.green, 25), linestyle=hline.style_dashed, title='Overbought Middle Band丨超买中轨')
+OverboughtLine3 = hline(60, color=color.new(color.green, 25), linestyle=hline.style_dotted, title='Overbought Lower Band丨超买下轨')
+// Oversold area
+OversoldLine3 = hline(-60, color=color.new(color.red, 25), linestyle=hline.style_dotted, title='Oversold Upper Band丨超卖上轨')
+OversoldLine2 = hline(-80, color=color.new(color.red, 25), linestyle=hline.style_dashed, title='Oversold Middle Band丨超卖中轨')
+OversoldLine1 = hline(-100, color=color.new(color.red, 0), linestyle=hline.style_solid, title='Oversold Lower Band丨超卖下轨')
+
+hline(0, color=color.new(color.gray, 0), linestyle=hline.style_dotted, title='Zero Line丨零轴线')
+
+// ████████ MACD-Input parameters ████████
+ShowMACDLines = input.bool(false, title='Show MACD Lines丨显示 MACD 均线', inline='MACDset', group='★ MACD Settings丨MACD 设置 ★', tooltip='▶︎ The MACD histogram with standard parameters is used as a reference for wave trend analysis.\n▶︎ For certain symbols or timeframes, the display may not be optimal; in such cases, adjusting the scaling period is recommended.\n▶︎ Option Description:\n• Hide Weekly+: Hides the MACD lines and histogram on weekly timeframes and higher to prevent chart scaling distortion caused by large MACD values on higher timeframes.\n• Show Weekly+: Displays MACD on all timeframes; however, on higher timeframes, large MACD values may significantly compress the chart’s vertical scale.\n\n▶︎ 采用 MACD 标准参数直方图作为波浪趋势参考。\n▶︎ 在个别品种或特定周期下,显示效果可能不理想,此时可通过调整缩放周期参数进行修正。\n▶︎ 选项说明：\n• 隐藏周级+：在周线及以上时间周期中隐藏 MACD 均线和柱状图，以避免高周期数值过大对图表比例造成干扰。\n• 显示周级+：在所有时间周期中显示 MACD，但在高周期下可能因 MACD 数值较大而导致图表纵轴被明显压缩。')
+WeeklyMACDMode = input.string('Hide Weekly+丨隐藏周级', title='', options=['Hide Weekly+丨隐藏周级', 'Show Weekly+丨显示周级'], inline='MACDset', group='★ MACD Settings丨MACD 设置 ★')
+MACDnormalizePeriod = input.int(300, "Normalization Period丨归一化缩放周期", minval=50, inline='MACD', group='★ MACD Settings丨MACD 设置 ★')
+ShowMACDDiv = input.bool(false, title='MACD Divergence丨MACD 背离', inline='Div', group='★ MACD Settings丨MACD 设置 ★', tooltip='▶︎ Displays divergence signals based on the MACD lines; Requires “Show MACD Lines” to be enabled.\n\n▶︎ 显示基于MACD均线的背离信号，需要先开启"显示MACD均线"选项。')
+ShowHistDiv = input.bool(true, title='Hist Divergence丨直方图背离', inline='Div', group='★ MACD Settings丨MACD 设置 ★')
+DivergenceMode = input.string('Regular Divergence丨常规背离', title='Divergence Mode丨背离模式', inline='DivMode', options=['Regular Divergence丨常规背离', 'Regular + Hidden丨常规 + 隐藏背离'], group='★ MACD Settings丨MACD 设置 ★')
+
+PivotLookbackLeft = input.int(8, title='Pivot Left丨向左回溯', minval=1, inline='Pivot', group='★ MACD Settings丨MACD 设置 ★')
+PivotLookbackRight = input.int(1, title='Pivot Right丨向右回溯', minval=1, inline='Pivot', group='★ MACD Settings丨MACD 设置 ★')
+MinLookbackRange = input.int(5, title='Min Range丨最小范围', minval=1, inline='Range', group='★ MACD Settings丨MACD 设置 ★')
+MaxLookbackRange = input.int(60, title='Max Range丨最大范围', minval=1, inline='Range', group='★ MACD Settings丨MACD 设置 ★')
+
+// Determine if the current timeframe is weekly or higher (only checks weekly and monthly charts)
+isWeeklyOrHigher = timeframe.isweekly or timeframe.ismonthly
+MACDEnabled = WeeklyMACDMode == 'Hide Weekly+丨隐藏周级' ? not isWeeklyOrHigher : true
+
+ma(source, length, maType) =>
+    switch maType
+        "EMA" => ta.ema(source, length)
+        "SMA" => ta.sma(source, length)
+
+// Calculate MACD only when enabled
+var float macdNormalized = na
+var float signalNormalized = na
+var float histNormalized = na
+
+if MACDEnabled
+    maFast = ma(close, 12, "EMA")
+    maSlow = ma(close, 26, "EMA")
+    macd = maFast - maSlow
+    signal = ma(macd, 9, "EMA")
+    hist = macd - signal
+    maxMACD = ta.highest(math.max(math.abs(macd), math.abs(signal)), MACDnormalizePeriod)
+    maxHist = ta.highest(math.abs(hist), MACDnormalizePeriod)
+    macdNormalized := maxMACD > 0 ? (macd / maxMACD) * 100 : macd
+    signalNormalized := maxMACD > 0 ? (signal / maxMACD) * 100 : signal
+    histNormalized := maxHist > 0 ? (hist / maxHist) * 50 : hist
+else
+    macdNormalized := na
+    signalNormalized := na
+    histNormalized := na
+
+hColor = MACDEnabled ? (histNormalized >= 0 ? histNormalized > histNormalized[1] ? color.new(#26a69a, 0) : color.new(#b2dfdb, 0) : histNormalized > histNormalized[1] ? color.new(#ffcdd2, 0) : color.new(#ff5252, 0)) : na
+plot(MACDEnabled ? histNormalized : na, "MACD Histogram丨MACD直方图", hColor, style=plot.style_columns, display=display.pane)
+plot(ShowMACDLines and MACDEnabled ? macdNormalized : na, title='MACD Line丨MACD线', color=color.new(#26a69a, 0), display=display.pane)
+plot(ShowMACDLines and MACDEnabled ? signalNormalized : na, title='Signal Line丨信号线', color=color.new(#ff5252, 0), display=display.pane)
+
+// ============ Deviation Detection ============
+
+// Determine Display Mode
+ShowRegularDiv = DivergenceMode == 'Regular Divergence丨常规背离' or DivergenceMode == 'Regular + Hidden丨常规 + 隐藏背离'
+ShowHiddenDiv = DivergenceMode == 'Regular + Hidden丨常规 + 隐藏背离'
+
+lbR = PivotLookbackRight
+lbL = PivotLookbackLeft
+
+// Oscillator selection: MACD line or histogram
+OSC_MACD = MACDEnabled and ShowMACDLines and ShowMACDDiv ? macdNormalized : na
+OSC_Hist = MACDEnabled and ShowHistDiv ? histNormalized : na
+
+// Pivot detection of MACD divergence
+plFound_MACD = not na(ta.pivotlow(OSC_MACD, lbL, lbR))
+phFound_MACD = not na(ta.pivothigh(OSC_MACD, lbL, lbR))
+
+// Pivot detection of histogram divergence
+plFound_Hist = not na(ta.pivotlow(OSC_Hist, lbL, lbR))
+phFound_Hist = not na(ta.pivothigh(OSC_Hist, lbL, lbR))
+
+inRange(cond) =>
+    bars = ta.barssince(cond)
+    MinLookbackRange <= bars and bars <= MaxLookbackRange
+
+// ============ MACD line divergence ============
+
+// Regular Bullish
+OSCHL_MACD = OSC_MACD[lbR] > ta.valuewhen(plFound_MACD, OSC_MACD[lbR], 1) and inRange(plFound_MACD[1])
+PriceLL_MACD = low[lbR] < ta.valuewhen(plFound_MACD, low[lbR], 1)
+BullCond_MACD = ShowMACDDiv and ShowRegularDiv and PriceLL_MACD and OSCHL_MACD and plFound_MACD
+plot(plFound_MACD ? OSC_MACD[lbR] : na, offset=-lbR, title='MACD Bull Div Line丨MACD看涨背离线', color=BullCond_MACD ? color.new(color.green, 0) : color.new(color.white, 100), display=display.pane, editable=false)
+plotshape(BullCond_MACD ? OSC_MACD[lbR] : na, offset=-lbR, title='MACD Bull Div丨MACD看涨背离', style=shape.labelup, location=location.absolute, color=color.new(color.green, 0), text='▲', textcolor=color.new(color.white, 0), display=display.pane, editable=false)
+
+// Hidden Bullish
+OSCLL_MACD = OSC_MACD[lbR] < ta.valuewhen(plFound_MACD, OSC_MACD[lbR], 1) and inRange(plFound_MACD[1])
+PriceHL_MACD = low[lbR] > ta.valuewhen(plFound_MACD, low[lbR], 1)
+HiddenBullCond_MACD = ShowMACDDiv and ShowHiddenDiv and PriceHL_MACD and OSCLL_MACD and plFound_MACD
+plot(plFound_MACD ? OSC_MACD[lbR] : na, offset=-lbR, title='MACD Hidden Bull Div Line丨MACD隐藏看涨背离线', color=HiddenBullCond_MACD ? color.new(color.aqua, 0) : color.new(color.white, 100), display=display.pane, editable=false)
+plotshape(HiddenBullCond_MACD ? OSC_MACD[lbR] : na, offset=-lbR, title='MACD Hidden Bull Div丨MACD隐藏看涨背离', style=shape.labelup, location=location.absolute, color=color.new(color.aqua, 0), text='▲', textcolor=color.new(color.white, 0), display=display.pane, editable=false)
+
+// Regular Bearish
+OSCLH_MACD = OSC_MACD[lbR] < ta.valuewhen(phFound_MACD, OSC_MACD[lbR], 1) and inRange(phFound_MACD[1])
+PriceHH_MACD = high[lbR] > ta.valuewhen(phFound_MACD, high[lbR], 1)
+BearCond_MACD = ShowMACDDiv and ShowRegularDiv and PriceHH_MACD and OSCLH_MACD and phFound_MACD
+plot(phFound_MACD ? OSC_MACD[lbR] : na, offset=-lbR, title='MACD Bear Div Line丨MACD看跌背离线', color=BearCond_MACD ? color.new(color.red, 0) : color.new(color.white, 100), display=display.pane, editable=false)
+plotshape(BearCond_MACD ? OSC_MACD[lbR] : na, offset=-lbR, title='MACD Bear Div丨MACD看跌背离', style=shape.labeldown, location=location.absolute, color=color.new(color.red, 0), text='▼', textcolor=color.new(color.white, 0), display=display.pane, editable=false)
+
+// Hidden Bearish
+OSCHH_MACD = OSC_MACD[lbR] > ta.valuewhen(phFound_MACD, OSC_MACD[lbR], 1) and inRange(phFound_MACD[1])
+PriceLH_MACD = high[lbR] < ta.valuewhen(phFound_MACD, high[lbR], 1)
+HiddenBearCond_MACD = ShowMACDDiv and ShowHiddenDiv and PriceLH_MACD and OSCHH_MACD and phFound_MACD
+plot(phFound_MACD ? OSC_MACD[lbR] : na, offset=-lbR, title='MACD Hidden Bear Div Line丨MACD隐藏看跌背离线', color=HiddenBearCond_MACD ? color.new(color.fuchsia, 0) : color.new(color.white, 100), display=display.pane, editable=false)
+plotshape(HiddenBearCond_MACD ? OSC_MACD[lbR] : na, offset=-lbR, title='MACD Hidden Bear Div丨MACD隐藏看跌背离', style=shape.labeldown, location=location.absolute, color=color.new(color.fuchsia, 0), text='▼', textcolor=color.new(color.white, 0), display=display.pane, editable=false)
+
+// ============ Histogram divergence ============
+// Regular Bullish
+OSCHL_Hist = OSC_Hist[lbR] > ta.valuewhen(plFound_Hist, OSC_Hist[lbR], 1) and inRange(plFound_Hist[1])
+PriceLL_Hist = low[lbR] < ta.valuewhen(plFound_Hist, low[lbR], 1)
+BullCond_Hist = ShowHistDiv and ShowRegularDiv and PriceLL_Hist and OSCHL_Hist and plFound_Hist
+plot(plFound_Hist ? OSC_Hist[lbR] : na, offset=-lbR, title='Hist Bull Div Line丨直方图看涨背离线', color=BullCond_Hist ? color.new(color.green, 0) : color.new(color.white, 100), display=display.pane, editable=false)
+plotshape(BullCond_Hist ? OSC_Hist[lbR] : na, offset=-lbR, title='Hist Bull Div丨直方图看涨背离', style=shape.labelup, location=location.absolute, color=color.new(color.green, 0), text='▲', textcolor=color.new(color.white, 0), display=display.pane, editable=false)
+
+// Hidden Bullish
+OSCLL_Hist = OSC_Hist[lbR] < ta.valuewhen(plFound_Hist, OSC_Hist[lbR], 1) and inRange(plFound_Hist[1])
+PriceHL_Hist = low[lbR] > ta.valuewhen(plFound_Hist, low[lbR], 1)
+HiddenBullCond_Hist = ShowHistDiv and ShowHiddenDiv and PriceHL_Hist and OSCLL_Hist and plFound_Hist
+plot(plFound_Hist ? OSC_Hist[lbR] : na, offset=-lbR, title='Hist Hidden Bull Div Line丨直方图隐藏看涨背离线', color=HiddenBullCond_Hist ? color.new(color.aqua, 0) : color.new(color.white, 100), display=display.pane, editable=false)
+plotshape(HiddenBullCond_Hist ? OSC_Hist[lbR] : na, offset=-lbR, title='Hist Hidden Bull Div丨直方图隐藏看涨背离', style=shape.labelup, location=location.absolute, color=color.new(color.aqua, 0), text='▲', textcolor=color.new(color.white, 0), display=display.pane, editable=false)
+
+// Regular Bearish
+OSCLH_Hist = OSC_Hist[lbR] < ta.valuewhen(phFound_Hist, OSC_Hist[lbR], 1) and inRange(phFound_Hist[1])
+PriceHH_Hist = high[lbR] > ta.valuewhen(phFound_Hist, high[lbR], 1)
+BearCond_Hist = ShowHistDiv and ShowRegularDiv and PriceHH_Hist and OSCLH_Hist and phFound_Hist
+plot(phFound_Hist ? OSC_Hist[lbR] : na, offset=-lbR, title='Hist Bear Div Line丨直方图看跌背离线', color=BearCond_Hist ? color.new(color.red, 0) : color.new(color.white, 100), display=display.pane, editable=false)
+plotshape(BearCond_Hist ? OSC_Hist[lbR] : na, offset=-lbR, title='Hist Bear Div丨直方图看跌背离', style=shape.labeldown, location=location.absolute, color=color.new(color.red, 0), text='▼', textcolor=color.new(color.white, 0), display=display.pane, editable=false)
+
+// Hidden Bearish
+OSCHH_Hist = OSC_Hist[lbR] > ta.valuewhen(phFound_Hist, OSC_Hist[lbR], 1) and inRange(phFound_Hist[1])
+PriceLH_Hist = high[lbR] < ta.valuewhen(phFound_Hist, high[lbR], 1)
+HiddenBearCond_Hist = ShowHistDiv and ShowHiddenDiv and PriceLH_Hist and OSCHH_Hist and phFound_Hist
+plot(phFound_Hist ? OSC_Hist[lbR] : na, offset=-lbR, title='Hist Hidden Bear Div Line丨直方图隐藏看跌背离线', color=HiddenBearCond_Hist ? color.new(color.fuchsia, 0) : color.new(color.white, 100), display=display.pane, editable=false)
+plotshape(HiddenBearCond_Hist ? OSC_Hist[lbR] : na, offset=-lbR, title='Hist Hidden Bear Div丨直方图隐藏看跌背离', style=shape.labeldown, location=location.absolute, color=color.new(color.fuchsia, 0), text='▼', textcolor=color.new(color.white, 0), display=display.pane, editable=false)
+// ████████ MACD-End ████████
+
+// ████████ WaveTrend Oscillator-Input parameters ████████
+ShowWTline = input.bool(true, 'Show WaveTrend Lines丨显示波浪趋势线', group = '★ WaveTrend Oscillator丨波浪趋势振荡器 ★', tooltip = '▶︎ Adaptive Wave Oscillator composed of a main trend line and a signal line, combined with the MACD histogram to measure trend strength.\n▶︎ Supports Laguerre smoothing filter to reduce noise and improve signal stability.\n▶︎ Includes golden cross / death cross alerts to highlight potential entry or risk points.\n\n▶︎ 自适应波浪振荡器，由主趋势线和信号线组成，结合 MACD 直方图，用于衡量趋势强度。\n▶︎ 支持拉盖尔平滑滤波，有助于减少噪音，提升信号稳定性。\n▶︎ 具备金叉/死叉提示，标注潜在买卖点或风险位置。')
+WTLength = input.int(title = 'Ch. Len丨通道长度', defval = 10, inline = 'WT1', group = '★ WaveTrend Oscillator丨波浪趋势振荡器 ★')
+WTAvgLen = input.int(title = 'Avg. Len丨均值长度', defval = 21, inline = 'WT1', group = '★ WaveTrend Oscillator丨波浪趋势振荡器 ★')
+Gamma = input.float(title = 'Laguerre Smooth丨拉盖尔平滑', defval = 0.02, step = 0.01, inline = 'WT2', group = '★ WaveTrend Oscillator丨波浪趋势振荡器 ★')
+laguerreMode = input.string('Gamma丨伽马值', title='', options=['None丨禁用', 'Gamma丨伽马值'], inline='WT2', group='★ WaveTrend Oscillator丨波浪趋势振荡器 ★', tooltip='▶︎ None: Disables Laguerre smoothing, uses raw trend data with faster response but more noise.\n▶︎ Gamma: Enables Laguerre smoothing with specified gamma value. Lower values (0.01-0.05) provide more smoothing, higher values (0.1-0.3) provide less smoothing.\n\n▶︎ 禁用：关闭拉盖尔平滑，使用原始趋势数据，响应更快但噪音较多。\n▶︎ 伽马值：启用拉盖尔平滑并使用指定伽马值。较小值(0.01-0.05)提供更多平滑,较大值(0.1-0.3)提供较少平滑。')
+
+
+ShowCrossSignals = input.bool(true, title='Show Cross Signals丨显示金叉死叉', group='★ WaveTrend Oscillator丨波浪趋势振荡器 ★', tooltip='▶︎ Enable to display golden cross and death cross signals.\n\n▶︎ 开启后显示金叉和死叉信号。')
+EnableHistFilter = input.bool(true, title='MACD Histogram Filter丨MACD 直方图过滤', group='★ WaveTrend Oscillator丨波浪趋势振荡器 ★', tooltip='▶︎ When enabled, only shows bullish crosses when MACD histogram is bullish, and bearish crosses when histogram is bearish.\n\n▶︎ 开启后，直方图多头时只显示多头交叉，空头时只显示空头交叉。')
+EnableMACDFilter = input.bool(false, title='MACD Zero-Line Filter丨MACD 零轴过滤', group='★ WaveTrend Oscillator丨波浪趋势振荡器 ★', tooltip='▶︎ When enabled, only shows bullish crosses when MACD line is above zero, and bearish crosses when MACD line is below zero.\n\n▶︎ 开启后，MACD 线位于零轴以上只显示多头交叉，零轴以下只显示空头交叉。')
+
+
+// ── Laguerre
+lag(g, p) =>
+    L0 = 0.0
+    L0 := (1 - g) * p + g * nz(L0[1])
+    L1 = 0.0
+    L1 := -g * L0 + nz(L0[1]) + g * nz(L1[1])
+    L2 = 0.0
+    L2 := -g * L1 + nz(L1[1]) + g * nz(L2[1])
+    L3 = 0.0
+    L3 := -g * L2 + nz(L2[1]) + g * nz(L3[1])
+    (L0 + 2 * L1 + 2 * L2 + L3) / 6
+
+
+var float WTLineRaw = na
+var float SignalLineRaw = na
+
+if ShowWTline
+    AvgPrice = hlc3
+    ExpSmoothAvg = ta.ema(AvgPrice, WTLength)
+    AbsPriceDev = math.abs(AvgPrice - ExpSmoothAvg)
+    SmoothDev = ta.ema(AbsPriceDev, WTLength)
+    CompIndex = (AvgPrice - ExpSmoothAvg) / (0.015 * SmoothDev)
+    TrendCompIndex = ta.ema(CompIndex, WTAvgLen)
+    
+    // Decide whether to use Laguerre smoothing based on the options.
+    LagSmoothedTCI = laguerreMode == 'Gamma丨伽马值' ? lag(Gamma, TrendCompIndex) : TrendCompIndex
+    WTLineRaw := LagSmoothedTCI
+    SignalLineRaw := ta.sma(WTLineRaw, 4)
+else // Clear output when closing to prevent any drawing.
+    WTLineRaw := na
+    SignalLineRaw := na
+
+// Moving average drawing
+WTPlot = plot(ShowWTline ? WTLineRaw : na, title = 'WT Line丨波浪趋势主线', color = color.new(#2962FF, 0), display=display.pane)
+sigPlot = plot(ShowWTline ? SignalLineRaw : na, title = 'WT Signal Line丨波浪趋势信号线', color = color.new(#FF6D00, 0), display=display.pane)
+WTFillColor = WTLineRaw > SignalLineRaw ? color.new(#2962FF, 50) : color.new(#FF6D00, 50)
+fill(WTPlot, sigPlot, color = ShowWTline ? WTFillColor : na, title = 'WT MA Fill丨波浪趋势均线填充')
+
+// Golden cross and death cross signals
+
+// Filtering conditions
+histBullish = histNormalized > 0  // Histogram bullish
+histBearish = histNormalized < 0  // Histogram bears
+macdAboveZero = macdNormalized > 0  // MACD line above zero axis
+macdBelowZero = macdNormalized < 0  // MACD line below zero axis
+
+// Determine whether to allow display of multiple crossovers
+allowBullishCross = true
+if EnableHistFilter and not histBullish
+    allowBullishCross := false
+if EnableMACDFilter and not macdAboveZero
+    allowBullishCross := false
+
+// Determine whether to allow the display of a bearish crossover
+allowBearishCross = true
+if EnableHistFilter and not histBearish
+    allowBearishCross := false
+if EnableMACDFilter and not macdBelowZero
+    allowBearishCross := false
+
+// Apply filtered cross signal
+goldenCross = ShowWTline and ShowCrossSignals and ta.crossover(WTLineRaw, SignalLineRaw) and allowBullishCross
+deathCross = ShowWTline and ShowCrossSignals and ta.crossunder(WTLineRaw, SignalLineRaw) and allowBearishCross
+
+crossValue = goldenCross or deathCross ? SignalLineRaw : na
+absValue = math.abs(crossValue)
+goldenTiny = goldenCross and absValue >= 0 and absValue < 25
+goldenSmall = goldenCross and absValue >= 25 and absValue < 50
+goldenNormal = goldenCross and absValue >= 50
+deathTiny = deathCross and absValue >= 0 and absValue < 25
+deathSmall = deathCross and absValue >= 25 and absValue < 50
+deathNormal = deathCross and absValue >= 50
+
+plotchar(goldenTiny ? SignalLineRaw : na, title = 'WT Golden Cross-I丨波浪趋势金叉-I', char = '⨯', location = location.absolute, color = color.new(#00ff00, 0), size = size.tiny, display=display.pane)
+plotchar(goldenSmall ? SignalLineRaw : na, title = 'WT Golden Cross-II丨波浪趋势金叉-II', char = '×', location = location.absolute, color = color.new(#00ff00, 0), size = size.tiny, display=display.pane)
+plotchar(goldenNormal ? SignalLineRaw : na, title = 'WT Golden Cross-III丨波浪趋势金叉-III', char = '✕', location = location.absolute, color = color.new(#00ff00, 0), size = size.tiny, display=display.pane)
+plotchar(deathTiny ? SignalLineRaw : na, title = 'WT Death Cross-I丨波浪趋势死叉-I', char = '⨯', location = location.absolute, color = color.new(#ff0000, 0), size = size.tiny, display=display.pane)
+plotchar(deathSmall ? SignalLineRaw : na, title = 'WT Death Cross-II丨波浪趋势死叉-II', char = '×', location = location.absolute, color = color.new(#ff0000, 0), size = size.tiny, display=display.pane)
+plotchar(deathNormal ? SignalLineRaw : na, title = 'WT Death Cross-III丨波浪趋势死叉-III', char = '✕', location = location.absolute, color = color.new(#ff0000, 0), size = size.tiny, display=display.pane)
+
+// ████████ WaveTrend Oscillator-End ████████

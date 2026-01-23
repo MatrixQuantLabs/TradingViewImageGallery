@@ -1,0 +1,170 @@
+
+//  __  __         _          _         ___                        _   
+// |  \/  |  __ _ | |_  _ __ (_)__  __ / _ \  _   _   __ _  _ __  | |_ 
+// | |\/| | / _` || __|| '__|| |\ \/ /| | | || | | | / _` || '_ \ | __|
+// | |  | || (_| || |_ | |   | | >  < | |_| || |_| || (_| || | | || |_ 
+// |_|  |_| \__,_| \__||_|   |_|/_/\_\ \__\_\ \__,_| \__,_||_| |_| \__|
+// 
+// This Pine Script® code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © MatrixQuantLabs
+//
+//@version=6
+strategy("❖ 超级趋势策略 / Supertrend Strategy ❖", overlay=true, default_qty_type=strategy.percent_of_equity, initial_capital=100000, default_qty_value=75, margin_long=0, margin_short=0)
+
+// ===========================================================
+// 预设参数设置（可选）
+// ===========================================================
+
+tooltip_enablePreset = '· Enabling preset parameters will disable manual ATR settings. If you have customized values that work better, feel free to suggest adjustments or request additional presets.' + 
+                      '\n· 启用预设参数后将禁用手动 ATR 设置，如果您有效果更好的参数，请随时提出调整建议或新增其他预设。'
+enablePreset = input.bool(false, "Enable Preset Parameters / 启用预设参数", group="Preset Settings / 预设参数", tooltip = tooltip_enablePreset)
+presetSelection = input.string("BTC 6H", "Preset Selection / 预设选择", options=["BTC 6H", "BTC 2H", "ETH 6H"], inline="preset", group="Preset Settings / 预设参数") 
+
+atrPeriod_preset = switch presetSelection
+    "BTC 6H" => 12
+    "BTC 2H" => 15
+    "ETH 6H" => 10
+    => 14 
+factor_preset = switch presetSelection
+    "BTC 6H" => 1.72
+    "BTC 2H" => 3.74
+    "ETH 6H" => 3.35
+    => 2.5
+
+atrPeriod = enablePreset ? atrPeriod_preset : input(12, "ATR Length / 平均真实波动范围", group="Parameter Settings / 参数设置") 
+factor    = enablePreset ? factor_preset    : input.float(2.04, "Factor / 乘数因子",step=0.05, group="Parameter Settings / 参数设置") 
+
+// ===========================================================
+// 新增：独立等待功能设置（默认均关闭，等待数量默认1根K线）
+// ===========================================================
+
+tooltip_DelayedExit = '· This feature only takes effect when "Enable Delayed Entry Execution" is selected.' + 
+                      '\n· 该功能仅在勾选“启用延迟开仓”时才生效。'
+enableEntryKLineWait = input.bool(false, "Enable Delayed Entry Execution / 启用延迟开仓", group="Trade Execution Delay / 交易延迟设置")
+entryKLineWaitCount  = input.int(1, "Delayed Entry Bars / 延迟K线数量", minval=1, group="Trade Execution Delay / 交易延迟设置")
+
+enableExitKLineWait  = input.bool(false, "Enable Delayed Exit Execution / 启用延迟平仓", group="Trade Execution Delay / 交易延迟设置", tooltip=tooltip_DelayedExit)
+exitKLineWaitCount   = input.int(1, "Delayed Exit Bars / 延迟K线数量", minval=1, group="Trade Execution Delay / 交易延迟设置")
+// ===========================================================
+// 止盈止损参数设置
+// ===========================================================
+enableCloseStopLoss   = input.bool(false, "Enable Close Stop Loss / 启用收盘止损", group="Close Stop Loss & Take Profit / 收盘止损止盈")
+closeStopLossPercent  = input.float(3.0, "Stop Loss % / 止损百分比", minval=0.1, step=0.1, group="Close Stop Loss & Take Profit / 收盘止损止盈")
+enableCloseTakeProfit = input.bool(false, "Enable Close Take Profit / 启用收盘止盈", group="Close Stop Loss & Take Profit / 收盘止损止盈")
+closeTakeProfitPercent= input.float(5.0, "Take Profit % / 止盈百分比", minval=0.1, step=0.1, group="Close Stop Loss & Take Profit / 收盘止损止盈")
+
+enableRealTimeStopLoss  = input.bool(false, "Enable Real-time Stop Loss / 启用实时止损", group="Real-time Stop Loss & Take Profit / 实时止损止盈")
+realTimeStopLossPercent = input.float(3.0, "Stop Loss % / 止损百分比", minval=0.1, step=0.1, group="Real-time Stop Loss & Take Profit / 实时止损止盈")
+enableRealTimeTakeProfit  = input.bool(false, "Enable Real-time Take Profit / 启用实时止盈", group="Real-time Stop Loss & Take Profit / 实时止损止盈")
+realTimeTakeProfitPercent = input.float(5.0, "Take Profit % / 止盈百分比", minval=0.1, step=0.1, group="Real-time Stop Loss & Take Profit / 实时止损止盈")
+
+
+// ===========================================================
+// 计算 Supertrend 指标
+// ===========================================================
+[_, direction] = ta.supertrend(factor, atrPeriod)
+
+// 定义用于等待的变量（分别处理开仓与平仓信号）
+var string pendingEntrySignal = na
+var int    entrySignalBar   = na
+var string pendingExitSignal  = na
+var int    exitSignalBar    = na
+
+// ===========================================================
+// 当趋势信号出现时，分别处理平仓和开仓
+// ===========================================================
+
+// 当趋势转为多头（ta.change(direction) < 0）：
+//    需要平掉空仓，并开多仓
+if ta.change(direction) < 0 and barstate.isconfirmed
+    // 平仓（关闭空单）：判断是否启用平仓等待
+    if enableExitKLineWait
+        pendingExitSignal := "short"  // 表示需要平掉空单
+        exitSignalBar := bar_index
+    else
+        strategy.close("Short / 空")
+    // 开仓（建立多单）：判断是否启用开仓等待
+    if enableEntryKLineWait
+        pendingEntrySignal := "long"
+        entrySignalBar := bar_index
+    else
+        strategy.entry("Long / 多", strategy.long)
+
+// 当趋势转为空头（ta.change(direction) > 0）：
+//    需要平掉多仓，并开空仓
+if ta.change(direction) > 0 and barstate.isconfirmed
+    // 平仓（关闭多单）：判断是否启用平仓等待
+    if enableExitKLineWait
+        pendingExitSignal := "long"  // 表示需要平掉多单
+        exitSignalBar := bar_index
+    else
+        strategy.close("Long / 多")
+    // 开仓（建立空单）：判断是否启用开仓等待
+    if enableEntryKLineWait
+        pendingEntrySignal := "short"
+        entrySignalBar := bar_index
+    else
+        strategy.entry("Short / 空", strategy.short)
+
+// ===========================================================
+// 检查等待条件，执行待处理的平仓信号（仅当启用平仓等待时）
+// ===========================================================
+if pendingExitSignal != "" and bar_index >= exitSignalBar + exitKLineWaitCount 
+    if pendingExitSignal == "short"
+        strategy.close("Short / 空")
+    else if pendingExitSignal == "long"
+        strategy.close("Long / 多")
+    pendingExitSignal := ""
+    exitSignalBar := na
+
+// ===========================================================
+// 检查等待条件，执行待处理的开仓信号（仅当启用开仓等待时）
+// ===========================================================
+if pendingEntrySignal != "" and bar_index >= entrySignalBar + entryKLineWaitCount 
+    if pendingEntrySignal == "long"
+        strategy.entry("Long / 多", strategy.long)
+    else if pendingEntrySignal == "short"
+        strategy.entry("Short / 空", strategy.short)
+    pendingEntrySignal := ""
+    entrySignalBar := na
+
+// ===========================================================
+// 止盈止损 & 实时止盈止损逻辑（不受等待功能影响）
+// ===========================================================
+percentPnL = (close - strategy.position_avg_price) / strategy.position_avg_price * 100
+
+if strategy.position_size > 0 
+    if enableCloseStopLoss and percentPnL <= -closeStopLossPercent
+        strategy.close("Long / 多", comment=str.tostring(closeStopLossPercent) + "% Long Stop / 多单止损")
+    if enableCloseTakeProfit and percentPnL >= closeTakeProfitPercent
+        strategy.close("Long / 多", comment=str.tostring(closeTakeProfitPercent) + "% Long Profit / 多单止盈")
+
+if strategy.position_size < 0 
+    if enableCloseStopLoss and percentPnL >= closeStopLossPercent
+        strategy.close("Short / 空", comment=str.tostring(closeStopLossPercent) + "% Short Stop / 空单止损")
+    if enableCloseTakeProfit and percentPnL <= -closeTakeProfitPercent
+        strategy.close("Short / 空", comment=str.tostring(closeTakeProfitPercent) + "% Short Profit / 空单止盈")
+
+if strategy.position_size > 0 and (enableRealTimeStopLoss or enableRealTimeTakeProfit)
+    stopLossLong = enableRealTimeStopLoss ? strategy.position_avg_price * (1 - realTimeStopLossPercent / 100) : na
+    takeProfitLong = enableRealTimeTakeProfit ? strategy.position_avg_price * (1 + realTimeTakeProfitPercent / 100) : na
+    strategy.exit("Real-time SL/TP Long", from_entry="Long / 多", stop=stopLossLong, limit=takeProfitLong, comment=(enableRealTimeStopLoss ? str.tostring(realTimeStopLossPercent) + "% Long Stop / 多单止损 " : "") + (enableRealTimeTakeProfit ? str.tostring(realTimeTakeProfitPercent) + "% Long Profit / 多单止盈" : ""))
+
+if strategy.position_size < 0 and (enableRealTimeStopLoss or enableRealTimeTakeProfit)
+    stopLossShort = enableRealTimeStopLoss ? strategy.position_avg_price * (1 + realTimeStopLossPercent / 100) : na
+    takeProfitShort = enableRealTimeTakeProfit ? strategy.position_avg_price * (1 - realTimeTakeProfitPercent / 100) : na
+    strategy.exit("Real-time SL/TP Short", from_entry="Short / 空", stop=stopLossShort, limit=takeProfitShort, comment=(enableRealTimeStopLoss ? str.tostring(realTimeStopLossPercent) + "% Short Stop / 空单止损 " : "") + (enableRealTimeTakeProfit ? str.tostring(realTimeTakeProfitPercent) + "% Short Profit / 空单止盈" : ""))
+
+// ===========================================================
+// 图表绘制：趋势线、信号标记和背景填充
+// ===========================================================
+[Strategytrends, directionlines] = ta.supertrend(factor, atrPeriod)
+
+upTrend = plot(directionlines < 0 ? Strategytrends : na, "Strategytrends-Bullish / 策略趋势多头趋势线", color.new(color.blue, 0), style=plot.style_linebr, linewidth=1)
+plotshape(directionlines < 0 and directionlines[1] >= 0 ? Strategytrends : na, title="Bullish Start / 策略趋势多头起点", location=location.absolute, color=color.new(color.blue, 0), style=shape.triangleup, size=size.tiny)
+downTrend = plot(directionlines >= 0 ? Strategytrends : na, "Strategytrends-Bearish / 策略趋势空头趋势线", color.new(color.orange, 0), style=plot.style_linebr, linewidth=1)
+plotshape(directionlines > 0 and directionlines[1] <= 0 ? Strategytrends : na, title="Bearish Start / 策略趋势空头起点", location=location.absolute, color=color.new(color.orange, 0), style=shape.triangledown, size=size.tiny)
+
+bodyMiddle = plot(barstate.isfirst ? na : (open + close) / 2, "Body Middle / 隐藏中线", display=display.none)
+fill(bodyMiddle, upTrend, color.new(color.blue, 95), fillgaps=false, title="Strategytrends-Bullish Fill / 策略趋势背景")
+fill(bodyMiddle, downTrend, color.new(color.orange, 95), fillgaps=false, title="Strategytrends-Bearish Fill / 策略趋势背景")

@@ -1,0 +1,69 @@
+//  __  __         _          _         ___                        _   
+// |  \/  |  __ _ | |_  _ __ (_)__  __ / _ \  _   _   __ _  _ __  | |_ 
+// | |\/| | / _` || __|| '__|| |\ \/ /| | | || | | | / _` || '_ \ | __|
+// | |  | || (_| || |_ | |   | | >  < | |_| || |_| || (_| || | | || |_ 
+// |_|  |_| \__,_| \__||_|   |_|/_/\_\ \__\_\ \__,_| \__,_||_| |_| \__|
+// 
+// This Pine Script® code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © MatrixQuantLabs
+//
+//@version=6
+indicator('Supertrend Pro', shorttitle = '★ Supertrend Pro丨超级趋势专业版 ★', overlay = true)
+
+ShowPrimaryTrend = input.bool(true, 'Show Primary Trend丨显示主趋势', group = 'Supertrend丨超级趋势', tooltip = '▶︎ Primary Trend: Used to identify the overall market direction. It produces smoother lines with fewer trend reversals, offering higher stability at the cost of slower reaction. Ideal for swing or long-term traders, or those looking to filter out short-term noise.\n▶︎ 主趋势用于识别市场的大方向，线条平滑、趋势转向不频繁，虽然反应略慢但稳定性强，适合中长线交易者或希望过滤短期震荡信号的策略。')
+showSecondaryTrend = input.bool(true, 'Show Secondary Trend丨显示次趋势', group = 'Supertrend丨超级趋势', tooltip = '▶︎ Secondary Trend: Designed to capture swing opportunities or turning points within a trend. It reacts faster and stays closer to price, but with more frequent changes. Suitable for short-term or swing traders, and often used alongside the primary trend to refine entry and exit timing.\n▶︎ 次趋势用于捕捉趋势中的波段机会或拐点，线条更贴近价格、反应迅速但变化较频繁，适合短线或波段交易者，并常与主趋势搭配用于判断进出场时机。')
+ShowFilterLine = input.bool(true, "Show MA Filter Line丨显示 MA 过滤线", group='Supertrend丨超级趋势', tooltip="▶︎ Show the MA filter line on the chart for visualizing trend direction.\n▶︎ 在图表中显示MA过滤线，便于观察趋势方向。")
+
+// 过滤用的固定均线：EMA50
+MA = ta.ema(close, 50)
+
+// 动态决定MA颜色：白色震荡过渡 / 红色下穿 / 绿色上穿
+OscillationRange = MA * (0.25  / 100)// 容差百分比，默认0.1%
+MAColor = math.abs(close - MA) <= OscillationRange ? color.white : (close > MA ? color.aqua : color.fuchsia)
+// 绘制MA线
+plot(ShowFilterLine ? MA : na, color=MAColor, title="MA Filter Line丨MA 过滤均线")
+
+// Supertrend 计算
+[supertrend1, direction1] = ta.supertrend(3, 12)
+[supertrend2, direction2] = ta.supertrend(1.75, 12)
+supertrend1 := barstate.isfirst ? na : supertrend1
+supertrend2 := barstate.isfirst ? na : supertrend2
+
+// 绘图逻辑
+upTrend1 = plot(ShowPrimaryTrend and direction1 < 0 ? supertrend1 : na, 'Primary Bull Lower丨主趋势看涨下轨', color = color.new(color.green, 0), style = plot.style_linebr)
+downTrend1 = plot(ShowPrimaryTrend and direction1 >= 0 ? supertrend1 : na, 'Primary Bear Upper丨主趋势看跌上轨', color = color.new(color.red, 0), style = plot.style_linebr)
+
+upTrend2 = plot(showSecondaryTrend and direction2 < 0 ? supertrend2 : na, 'Secondary Bull Upper丨次趋势看涨下轨', color = color.new(color.green, 50), style = plot.style_linebr)
+downTrend2 = plot(showSecondaryTrend and direction2 >= 0 ? supertrend2 : na, 'Secondary Bear Lower丨次趋势看跌下轨', color = color.new(color.red, 50), style = plot.style_linebr)
+
+// 中心线（用于背景填充）
+bodyMiddle = plot((ShowPrimaryTrend or showSecondaryTrend) and not barstate.isfirst ? (open + close) / 2 : na, 'Body Middle', display = display.none)
+
+// 背景填充
+fill(bodyMiddle, upTrend1, title = 'PrimaryTrend Bull Fill丨主趋势看涨填充', color = color.new(color.green, 95), fillgaps = false)
+fill(bodyMiddle, downTrend1, title = 'PrimaryTrend Bear Fill丨主趋势看跌填充', color = color.new(color.red, 95), fillgaps = false)
+fill(bodyMiddle, upTrend2, title = 'SecondaryTrend Bull Fill丨次趋势看涨填充', color = color.new(color.green, 95), fillgaps = false)
+fill(bodyMiddle, downTrend2, title = 'SecondaryTrend Bear Fill丨次趋势看跌填充', color = color.new(color.red, 95), fillgaps = false)
+
+// 趋势起点标记
+trend1Start = direction1 != direction1[1]
+trend2Start = direction2 != direction2[1]
+
+isBullish1 = ShowPrimaryTrend and trend1Start and direction1 < 0
+isBearish1 = ShowPrimaryTrend and trend1Start and direction1 > 0
+plotshape(isBullish1 ? supertrend1 : na, location = location.absolute, style = shape.circle, color = color.green, size = size.tiny, title = 'Primary Bull Signal丨主趋势看涨信号')
+plotshape(isBearish1 ? supertrend1 : na, location = location.absolute, style = shape.circle, color = color.red, size = size.tiny, title = 'Primary Bear Signal丨主趋势看跌信号')
+
+isBullish2 = showSecondaryTrend and trend2Start and direction2 < 0
+isBearish2 = showSecondaryTrend and trend2Start and direction2 > 0
+plotshape(isBullish2 ? supertrend2 : na, location=location.absolute, style=shape.labelup, color=color.green, size=size.tiny, textcolor=color.white, text="多\nLong", title='Long Trading Labels丨多头交易信号标签')
+plotshape(isBearish2 ? supertrend2 : na, location=location.absolute, style=shape.labeldown, color=color.red, size=size.tiny, textcolor=color.white, text="Short\n空", title='Short Trading Labels丨空头交易信号标签')
+
+// 警报条件
+alertcondition(ShowPrimaryTrend and direction1[1] > direction1,title = "Primary Trend Bullish丨主趋势看涨 🟢",message = "Supertrend Bullish Alert丨超级趋势看涨警报 🟢")
+alertcondition(ShowPrimaryTrend and direction1[1] < direction1,title = "Primary Trend Bearish丨主趋势看跌 🔴",message = "Supertrend Bearish Alert丨超级趋势看跌警报 🔴")
+alertcondition(ShowPrimaryTrend and direction1[1] != direction1,title = "Primary Trend Change丨主趋势发生变化 🚨",message = "Supertrend Change Alert丨超级趋势变化警报 🚨")
+
+alertcondition(showSecondaryTrend and direction2[1] > direction2,title = 'Supertrend Long Signal丨超级趋势多头交易信号 🟢',message = 'Long Trading Signal Appears丨出现多头交易信号 🟢')
+alertcondition(showSecondaryTrend and direction2[1] < direction2,title = 'Supertrend Short Signal丨超级趋势空头交易信号 🔴',message = 'Short Trading Signal Appears丨出现空头交易信号 🔴')
+alertcondition(showSecondaryTrend and direction2[1] != direction2,title = "Supertrend Short Signal丨超级趋势交易信号变化警报 🚨",message = "Trading Signal Change Alert丨交易信号变化警报 🚨")

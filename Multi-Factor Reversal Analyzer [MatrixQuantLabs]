@@ -5,7 +5,7 @@
 // |_|  |_| \__,_| \__||_|   |_|/_/\_\ \__\_\ \__,_| \__,_||_| |_| \__|
 // 
 // This Pine Script® code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
-// © MatrixQuant
+// © MatrixQuantLabs
 //
 //@version=6
 indicator(title = 'Multi-Factor Reversal Analyzer', shorttitle='★ Multi-Factor Reversal Analyzer丨多因子反转分析器 ★', overlay=false)

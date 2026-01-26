@@ -1,0 +1,533 @@
+//  __  __         _          _         ___                        _   
+// |  \/  |  __ _ | |_  _ __ (_)__  __ / _ \  _   _   __ _  _ __  | |_ 
+// | |\/| | / _` || __|| '__|| |\ \/ /| | | || | | | / _` || '_ \ | __|
+// | |  | || (_| || |_ | |   | | >  < | |_| || |_| || (_| || | | || |_ 
+// |_|  |_| \__,_| \__||_|   |_|/_/\_\ \__\_\ \__,_| \__,_||_| |_| \__|
+// 
+// This Pine Script® code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © MatrixQuantLabs
+//
+//@version=5
+
+indicator("Harmonic Patterns Trading System", shorttitle='★ Harmonic Patterns Trading System丨谐波形态交易系统 ★', overlay = true, max_bars_back = 1000)
+
+//== 设置参数 ==
+max_pivot_size = input.int(100, step=10,title = 'Max Pivot Point Size / 最大轴点大小', group="Harmonic Pattern / 谐波形态")
+showZigZag1 = input(true,title = 'Shape No.1 / 形态 1', group="Harmonic Pattern / 谐波形态")
+zigzag1Length = input.int(5, step=5, minval=1,title = 'Length / 范围', group="Harmonic Pattern / 谐波形态")
+zigzag1Color = input(color.new(color.aqua,0),title='Color / 颜色', group="Harmonic Pattern / 谐波形态")
+zigzag1Width = 1
+zigzag1Style = line.style_solid
+showZigZag2 = input(true,title = 'Shape No.2 / 形态 2', group="Harmonic Pattern / 谐波形态")
+zigzag2Length = input.int(10, step=5, minval=1,title = 'Length / 范围', group="Harmonic Pattern / 谐波形态")
+zigzag2Color = input(color.new(color.lime,0),title='Color / 颜色', group="Harmonic Pattern / 谐波形态")
+zigzag2Width = 1
+zigzag2Style = line.style_solid
+showZigZag3 = input(true,title = 'Shape No.3 / 形态 3', group="Harmonic Pattern / 谐波形态")
+zigzag3Length = input.int(20, step=5, minval=1,title = 'Length / 范围', group="Harmonic Pattern / 谐波形态")
+zigzag3Color = input(color.new(color.orange,0),title='Color / 颜色', group="Harmonic Pattern / 谐波形态")
+zigzag3Width = 1
+zigzag3Style = line.style_solid
+showZigZag4 = input(true,title = 'Shape No.4 / 形态 4', group="Harmonic Pattern / 谐波形态")
+zigzag4Length = input.int(30, step=5, minval=1,title = 'Length / 范围', group="Harmonic Pattern / 谐波形态")
+zigzag4Color = input(color.new(color.fuchsia,0),title='Color / 颜色', group="Harmonic Pattern / 谐波形态")
+zigzag4Width = 1
+zigzag4Style = line.style_solid
+
+waitForConfirmation = input(false,title = 'Confirm the Pattern / 确认模式', group="Harmonic Pattern / 谐波形态")
+errorPercent = input.int(10, minval=5, step=5, maxval=20,title = 'Error Percent / 误差率', group="Harmonic Pattern / 谐波形态")
+MaxRiskPerReward = input.int(40, title='Max Risk Per Reward / 最大风险 & 回报 (双顶部/底部)', step=10, minval=0, group="Harmonic Pattern / 谐波形态")
+doubleBottomTop = input(true,title = 'Double Bottom Top / 双顶 & 双底', group="Harmonic Pattern / 谐波形态")
+abcdClassic = input(true,title = 'ABCD', group="Harmonic Pattern / 谐波形态")
+abEQcd = input(true,title = 'AB=CD', group="Harmonic Pattern / 谐波形态")
+abcdExt = input(true,title = 'ABCD Ext / 扩展', group="Harmonic Pattern / 谐波形态")
+gartley = input(true,title = 'Gartley / 加特利', group="Harmonic Pattern / 谐波形态")
+crab = input(true,title = 'Crab / 螃蟹', group="Harmonic Pattern / 谐波形态")
+deepCrab = input(true,title = 'Deep Crab / 深蟹', group="Harmonic Pattern / 谐波形态")
+bat = input(true,title = 'Bat / 蝙蝠', group="Harmonic Pattern / 谐波形态")
+AltBat = input(true,title = 'Alt Bat / 变异蝙蝠', group="Harmonic Pattern / 谐波形态")
+butterfly = input(true,title = 'Butterfly / 蝴蝶', group="Harmonic Pattern / 谐波形态")
+shark = input(true,title = 'Shark / 鲨鱼', group="Harmonic Pattern / 谐波形态")
+AltShark = input(true, title = 'Alt Shark / 变异鲨鱼', group="Harmonic Pattern / 谐波形态")
+cypher = input(true,title = 'Cypher / 赛弗', group="Harmonic Pattern / 谐波形态")
+threeDrives = input(true,title = 'Three Drives / 三驱', group="Harmonic Pattern / 谐波形态")
+fiveZero = input(true,title = '5-0', group="Harmonic Pattern / 谐波形态")
+BlackSwan = input(true, title = 'Black Swan / 黑天鹅', group="Harmonic Pattern / 谐波形态")
+WhiteSwan = input(true, title = 'White Swan / 白天鹅', group="Harmonic Pattern / 谐波形态")
+WolfeWave = input(true, title = 'Wolfe Wave / 狼形波浪', group="Harmonic Pattern / 谐波形态")
+NenStar = input(true, title = 'Nen Star / 尼恩之星', group="Harmonic Pattern / 谐波形态")
+Dragon = input(true, title = 'Dragon / 龙', group="Harmonic Pattern / 谐波形态")
+DragonXD = input(true, title = 'DragonXD / 龙XD', group="Harmonic Pattern / 谐波形态")
+snorm = input(true, title = 'SNORM', group="Harmonic Pattern / 谐波形态")
+SpiralDrive = input(true, title = 'Spiral Drive / 螺旋推进', group="Harmonic Pattern / 谐波形态")
+bullishColor = input(color.new(color.green,50),title = 'Bearish Fill / 多头填充', group="Harmonic Pattern / 谐波形态")
+bearishColor = input(color.new(color.red,50),title = 'Bearish Fill / 空头填充', group="Harmonic Pattern / 谐波形态")
+//=== 误差率计算 ===
+err_min = (100 - errorPercent) / 100
+err_max = (100 + errorPercent) / 100
+//=== ZigZag & 数据结构 ===
+var zigzagpivots1 = array.new_float(0)
+var zigzagpivotbars1 = array.new_int(0)
+var zigzagpivotdirs1 = array.new_int(0)
+var zigzagpivots2 = array.new_float(0)
+var zigzagpivotbars2 = array.new_int(0)
+var zigzagpivotdirs2 = array.new_int(0)
+var zigzagpivots3 = array.new_float(0)
+var zigzagpivotbars3 = array.new_int(0)
+var zigzagpivotdirs3 = array.new_int(0)
+var zigzagpivots4 = array.new_float(0)
+var zigzagpivotbars4 = array.new_int(0)
+var zigzagpivotdirs4 = array.new_int(0)
+//=== 形态检测相关 ===
+var wmLine1 = array.new_line(8)
+var wmtype1 = array.new_int(2, 1)
+var wmLabels1 = array.new_bool(23, false)
+var wmLabel1 = array.new_label(1)
+var wmLine2 = array.new_line(8)
+var wmtype2 = array.new_int(2, 1)
+var wmLabels2 = array.new_bool(23, false)
+var wmLabel2 = array.new_label(1)
+var wmLine3 = array.new_line(8)
+var wmtype3 = array.new_int(2, 1)
+var wmLabels3 = array.new_bool(23, false)
+var wmLabel3 = array.new_label(1)
+var wmLine4 = array.new_line(8)
+var wmtype4 = array.new_int(2, 1)
+var wmLabels4 = array.new_bool(23, false)
+var wmLabel4 = array.new_label(1)
+//=== 1) ZigZag 计算 ===
+pivots(length) =>
+    float phigh = ta.highestbars(high, length) == 0 ? high : na
+    float plow = ta.lowestbars(low, length) == 0 ? low : na
+    dir = 0
+    iff_1 = plow and na(phigh) ? -1 : dir[1]
+    dir := phigh and na(plow) ? 1 : iff_1
+    [dir, phigh, plow]
+zigzag(length, zigzagpivots, zigzagpivotbars, zigzagpivotdirs) =>
+    [dir, phigh, plow] = pivots(length)
+    dirchanged = ta.change(dir)
+    if phigh or plow
+        value = dir == 1 ? phigh : plow
+        bar = bar_index
+        newDir = dir
+        if not dirchanged and array.size(zigzagpivots) >= 1
+            pivot = array.shift(zigzagpivots)
+            pivotbar = array.shift(zigzagpivotbars)
+            pivotdir = array.shift(zigzagpivotdirs)
+            useNewValues = value * pivotdir < pivot * pivotdir
+            value := useNewValues ? pivot : value
+            bar := useNewValues ? pivotbar : bar
+            bar
+        if array.size(zigzagpivots) >= 2
+            LastPoint = array.get(zigzagpivots, 1)
+            newDir := dir * value > dir * LastPoint ? dir * 2 : dir
+            newDir
+        array.unshift(zigzagpivots, value=value)
+        array.unshift(zigzagpivotbars, bar)
+        array.unshift(zigzagpivotdirs, newDir)
+        if array.size(zigzagpivots) > max_pivot_size
+            array.pop(zigzagpivots)
+            array.pop(zigzagpivotbars)
+            array.pop(zigzagpivotdirs)
+//=== 2) 形态标签函数 ===
+get_harmonic_label(wmLabels, dir, price, bar) =>
+    isGartley = array.get(wmLabels, 0)
+    isCrab = array.get(wmLabels, 1)
+    isDeepCrab = array.get(wmLabels, 2)
+    isBat = array.get(wmLabels, 3)
+    isButterfly = array.get(wmLabels, 4)
+    isShark = array.get(wmLabels, 5)
+    isCypher = array.get(wmLabels, 6)
+    is3Drives = array.get(wmLabels, 7)
+    isFiveZero = array.get(wmLabels, 8)
+    isAbcd = array.get(wmLabels, 9)
+    isAbEqCd = array.get(wmLabels, 10)
+    isAbcdExt = array.get(wmLabels, 11)
+    isDoubleTop = array.get(wmLabels, 12) and dir < 0
+    isDoubleBottom = array.get(wmLabels, 12) and dir > 0
+    isBlackSwan = array.get(wmLabels, 13)
+    isWhiteSwan = array.get(wmLabels, 14)
+    isWolfeWave = array.get(wmLabels, 15)
+    isNenStar = array.get(wmLabels, 16)
+    isDragon = array.get(wmLabels, 17)
+    isDragonXD = array.get(wmLabels, 18)
+    issnorm = array.get(wmLabels, 19)
+    isAltBat = array.get(wmLabels, 20)
+    isSpiralDrive = array.get(wmLabels, 21)
+    isAltShark = array.get(wmLabels, 22)
+    labelText = isGartley ? 'Gartley / 加特利' : ''
+    labelText := labelText + (isCrab ? (labelText == '' ? '' : '\n') + 'Crab / 螃蟹' : '')
+    labelText := labelText + (isDeepCrab ? (labelText == '' ? '' : '\n') + 'Deep Crab / 深蟹' : '')
+    labelText := labelText + (isBat ? (labelText == '' ? '' : '\n') + 'Bat / 蝙蝠' : '')
+    labelText := labelText + (isAltBat ? (labelText == '' ? '' : '\n') + 'Alt Bat / 变异蝙蝠' : '')
+    labelText := labelText + (isButterfly ? (labelText == '' ? '' : '\n') + 'Butterfly / 蝴蝶' : '')
+    labelText := labelText + (isShark ? (labelText == '' ? '' : '\n') + 'Shark / 鲨鱼' : '')
+    labelText := labelText + (isAltShark ? (labelText == '' ? '' : '\n') + 'Alt Shark / 变异鲨鱼' : '')
+    labelText := labelText + (isCypher ? (labelText == '' ? '' : '\n') + 'Cypher / 赛弗' : '')
+    labelText := labelText + (is3Drives ? (labelText == '' ? '' : '\n') + 'Three Drives / 三驱' : '')
+    labelText := labelText + (isFiveZero ? (labelText == '' ? '' : '\n') + '5-0' : '')
+    labelText := labelText + (isAbcd ? (labelText == '' ? '' : '\n') + 'ABCD' : '')
+    labelText := labelText + (isAbEqCd ? (labelText == '' ? '' : '\n') + 'AB=CD' : '')
+    labelText := labelText + (isAbcdExt ? (labelText == '' ? '' : '\n') + 'ABCD Ext / 扩展' : '')
+    labelText := labelText + (isDoubleTop ? (labelText == '' ? '' : '\n') + 'Double Top / 双顶' : '')
+    labelText := labelText + (isDoubleBottom ? (labelText == '' ? '' : '\n') + 'Double Bottom / 双底' : '')
+    labelText := labelText + (isBlackSwan ? (labelText == '' ? '' : '\n') + 'Black Swan / 黑天鹅' : '')
+    labelText := labelText + (isWhiteSwan ? (labelText == '' ? '' : '\n') + 'White Swan / 白天鹅' : '')
+    labelText := labelText + (isWolfeWave ? (labelText == '' ? '' : '\n') + 'Wolfe Waves / 狼形波浪' : '')
+    labelText := labelText + (isNenStar ? (labelText == '' ? '' : '\n') + 'Nen Star / 尼恩之星' : '')
+    labelText := labelText + (isDragon ? (labelText == '' ? '' : '\n') + 'Dragon / 龙' : '')
+    labelText := labelText + (isDragonXD ? (labelText == '' ? '' : '\n') + 'DragonXD / 龙XD' : '')
+    labelText := labelText + (issnorm ? (labelText == '' ? '' : '\n') + 'SNORM' : '')
+    labelText := labelText + (isSpiralDrive ? (labelText == '' ? '' : '\n') + 'Spiral Drive / 螺旋推进' : '')
+    trendColor = dir > 0 ? bullishColor : bearishColor
+    baseLabel = label.new(x=bar, y=price, text=labelText, yloc=yloc.price, color=trendColor, style=dir < 1 ? label.style_label_down : label.style_label_up, textcolor=color.black, size=size.normal)
+    baseLabel
+//=== 3) 形态检测函数 ===
+detect_harmonic_pattern(zigzagpivots, zigzagpivotbars, zigzagpivotdirs, wmLine, wmlabel, wmtype, wmLabels, zigzagColor, zigzagWidth, zigzagStyle, showZigZag) =>
+    start = waitForConfirmation ? 1 : 0
+    wm_pattern = false
+    abcd_pattern = false
+    double_pattern = false
+    if array.size(zigzagpivots) >= 7 + start and showZigZag
+        d = array.get(zigzagpivots, start + 0)
+        dBar = array.get(zigzagpivotbars, start + 0)
+        dDir = array.get(zigzagpivotdirs, start + 0)
+        c = array.get(zigzagpivots, start + 1)
+        cBar = array.get(zigzagpivotbars, start + 1)
+        cDir = array.get(zigzagpivotdirs, start + 1)
+        b = array.get(zigzagpivots, start + 2)
+        bBar = array.get(zigzagpivotbars, start + 2)
+        bDir = array.get(zigzagpivotdirs, start + 2)
+        a = array.get(zigzagpivots, start + 3)
+        aBar = array.get(zigzagpivotbars, start + 3)
+        aDir = array.get(zigzagpivotdirs, start + 3)
+        x = array.get(zigzagpivots, start + 4)
+        xBar = array.get(zigzagpivotbars, start + 4)
+        xDir = array.get(zigzagpivotdirs, start + 4)
+        y = array.get(zigzagpivots, start + 5)
+        yBar = array.get(zigzagpivotbars, start + 5)
+        yDir = array.get(zigzagpivotdirs, start + 5)
+        e = array.get(zigzagpivots, start + 6)  // 获取 E 点
+        eBar = array.get(zigzagpivotbars, start + 6)
+        eDir = array.get(zigzagpivotdirs, start + 6)
+        highPoint = math.max(x, a, b, c, d)
+        lowPoint = math.min(x, a, b, c, d)
+        dir = c > d ? 1 : -1
+        xabRatio = math.abs(b - a) / math.abs(x - a)
+        abcRatio = math.abs(c - b) / math.abs(a - b)
+        bcdRatio = math.abs(d - c) / math.abs(b - c)
+        cdeRatio = math.abs(e - d) / math.abs(c - d)
+        xadRatio = math.abs(d - a) / math.abs(x - a)
+        yxaRatio = math.abs(a - x) / math.abs(y - x)
+        abTime = math.abs(aBar - bBar)
+        cdTime = math.abs(cBar - dBar)
+        abPrice = math.abs(a - b)
+        cdPrice = math.abs(c - d)
+        time_ratio = cdTime / abTime
+        price_ratio = cdPrice / abPrice
+        abcdDirection = a < b and a < c and c < b and c < d and a < d and b < d ? 1 : a > b and a > c and c > b and c > d and a > d and b > d ? -1 : 0
+        risk = math.abs(b - d)
+        reward = math.abs(c - d)
+        riskPerReward = risk * 100 / (risk + reward)
+        if b < highPoint and b > lowPoint
+            //Gartley / 加特利
+            if gartley and xabRatio >= 0.618 * err_min and xabRatio <= 0.618 * err_max and abcRatio >= 0.382 * err_min and abcRatio <= 0.886 * err_max and (bcdRatio >= 1.272 * err_min and bcdRatio <= 1.618 * err_max or xadRatio >= 0.786 * err_min and xadRatio <= 0.786 * err_max)
+                wm_pattern := true
+                array.set(wmLabels, 0, true)
+            else
+                array.set(wmLabels, 0, false)
+            //Crab / 螃蟹
+            if crab and xabRatio >= 0.382 * err_min and xabRatio <= 0.618 * err_max and abcRatio >= 0.382 * err_min and abcRatio <= 0.886 * err_max and (bcdRatio >= 2.24 * err_min and bcdRatio <= 3.618 * err_max or xadRatio >= 1.618 * err_min and xadRatio <= 1.618 * err_max)
+                wm_pattern := true
+                array.set(wmLabels, 1, true)
+            else
+                array.set(wmLabels, 1, false)
+            //Deep Crab / 深蟹
+            if deepCrab and xabRatio >= 0.886 * err_min and xabRatio <= 0.886 * err_max and abcRatio >= 0.382 * err_min and abcRatio <= 0.886 * err_max and (bcdRatio >= 2.00 * err_min and bcdRatio <= 3.618 * err_max or xadRatio >= 1.618 * err_min and xadRatio <= 1.618 * err_max)
+                wm_pattern := true
+                array.set(wmLabels, 2, true)
+            else
+                array.set(wmLabels, 2, false)
+            //Bat / 蝙蝠
+            if bat and xabRatio >= 0.382 * err_min and xabRatio <= 0.50 * err_max and abcRatio >= 0.382 * err_min and abcRatio <= 0.886 * err_max and (bcdRatio >= 1.618 * err_min and bcdRatio <= 2.618 * err_max or xadRatio >= 0.886 * err_min and xadRatio <= 0.886 * err_max)
+                wm_pattern := true
+                array.set(wmLabels, 3, true)
+            else
+                array.set(wmLabels, 3, false)
+            //Butterfly / 蝴蝶
+            if butterfly and xabRatio >= 0.786 * err_min and xabRatio <= 0.786 * err_max and abcRatio >= 0.382 * err_min and abcRatio <= 0.886 * err_max and (bcdRatio >= 1.618 * err_min and bcdRatio <= 2.618 * err_max or xadRatio >= 1.272 * err_min and xadRatio <= 1.618 * err_max)
+                wm_pattern := true
+                array.set(wmLabels, 4, true)
+            else
+                array.set(wmLabels, 4, false)
+            //Shark / 鲨鱼
+            if shark and abcRatio >= 1.13 * err_min and abcRatio <= 1.618 * err_max and bcdRatio >= 1.618 * err_min and bcdRatio <= 2.24 * err_max and xadRatio >= 0.886 * err_min and xadRatio <= 1.13 * err_max
+                wm_pattern := true
+                array.set(wmLabels, 5, true)
+            else
+                array.set(wmLabels, 5, false)
+            //Cypher / 赛弗
+            if cypher and xabRatio >= 0.382 * err_min and xabRatio <= 0.618 * err_max and abcRatio >= 1.13 * err_min and abcRatio <= 1.414 * err_max and (bcdRatio >= 1.272 * err_min and bcdRatio <= 2.00 * err_max or xadRatio >= 0.786 * err_min and xadRatio <= 0.786 * err_max)
+                wm_pattern := true
+                array.set(wmLabels, 6, true)
+            else
+                array.set(wmLabels, 6, false)
+            //Three drive / 三驱
+            if threeDrives and yxaRatio >= 0.618 * err_min and yxaRatio <= 0.618 * err_max and xabRatio >= 1.27 * err_min and xabRatio <= 1.618 * err_max and abcRatio >= 0.618 * err_min and abcRatio <= 0.618 * err_max and bcdRatio >= 1.27 * err_min and bcdRatio <= 1.618 * err_max
+                wm_pattern := true
+                array.set(wmLabels, 7, true)
+            else
+                array.set(wmLabels, 7, false)
+            //5-0
+            if fiveZero and xabRatio >= 1.13 * err_min and xabRatio <= 1.618 * err_max and abcRatio >= 1.618 * err_min and abcRatio <= 2.24 * err_max and bcdRatio >= 0.5 * err_min and bcdRatio <= 0.5 * err_max
+                wm_pattern := true
+                array.set(wmLabels, 8, true)
+            else
+                array.set(wmLabels, 8, false)
+            //ABCD Classic
+            if abcdClassic and abcRatio >= 0.618 * err_min and abcRatio <= 0.786 * err_max and bcdRatio >= 1.272 * err_min and bcdRatio <= 1.618 * err_max and abcdDirection != 0
+                abcd_pattern := true
+                array.set(wmLabels, 9, true)
+            else
+                array.set(wmLabels, 9, false)
+            //AB=CD
+            if abEQcd and time_ratio >= err_min and time_ratio <= err_max and price_ratio >= err_min and price_ratio <= err_max and abcdDirection != 0
+                abcd_pattern := true
+                array.set(wmLabels, 10, true)
+            else
+                array.set(wmLabels, 10, false)
+            //ABCD Ext / 扩展
+            if abcdExt and price_ratio >= 1.272 * err_min and price_ratio <= 1.618 * err_max and abcRatio >= 0.618 * err_min and abcRatio <= 0.786 * err_max and abcdDirection != 0
+                abcd_pattern := true
+                array.set(wmLabels, 11, true)
+            else
+                array.set(wmLabels, 11, false)
+            //Double Top&Bottom / 双底双顶
+            if doubleBottomTop and (dDir == 1 and bDir == 2 and cDir == -1 or dDir == -1 and bDir == -2 and cDir == 1) and riskPerReward < MaxRiskPerReward
+                double_pattern := true
+                array.set(wmLabels, 12, true)
+            else
+                array.set(wmLabels, 12, false)
+            // Black Swan / 黑天鹅
+            if BlackSwan and xabRatio >= 0.886 * err_min and xabRatio <= 0.886 * err_max and abcRatio >= 0.382 * err_min and abcRatio <= 0.5 * err_max and bcdRatio >= 1.618 * err_min and bcdRatio <= 2.618 * err_max and xadRatio >= 2.0 * err_min and xadRatio <= 3.618 * err_max
+                wm_pattern := true
+                array.set(wmLabels, 13, true)
+            else
+                array.set(wmLabels, 13, false)
+            // White Swan / 白天鹅
+            if WhiteSwan and xabRatio >= 0.786 * err_min and xabRatio <= 0.886 * err_max and abcRatio >= 0.382 * err_min and abcRatio <= 0.618 * err_max and bcdRatio >= 1.272 * err_min and bcdRatio <= 2.618 * err_max and xadRatio >= 1.618 * err_min and xadRatio <= 2.618 * err_max
+                wm_pattern := true
+                array.set(wmLabels, 14, true)
+            else
+                array.set(wmLabels, 14, false)
+            // Wolfe Waves / 狼形波浪
+            if WolfeWave and xabRatio >= 0.382 * err_min and xabRatio <= 0.500 * err_max and bcdRatio >= 1.272 * err_min and bcdRatio <= 1.618 * err_max and xadRatio >= 1.272 * err_min and xadRatio <= 1.618 * err_max
+                wm_pattern := true
+                array.set(wmLabels, 15, true)
+            else
+                array.set(wmLabels, 15, false)
+            // Nen Star / 尼恩之星
+            if NenStar and xabRatio >= 0.382 * err_min and xabRatio <= 0.786 * err_max and abcRatio >= 1.13 * err_min and abcRatio <= 1.414 * err_max and bcdRatio >= 1.272 * err_min and bcdRatio <= 2.618 * err_max and xadRatio >= 1.13 * err_min and xadRatio <= 1.272 * err_max
+                wm_pattern := true
+                array.set(wmLabels, 16, true)
+            else
+                array.set(wmLabels, 16, false)
+            // Dragon / 龙
+            if Dragon and xabRatio >= 0.380 * err_min and xabRatio <= 0.620 * err_max and abcRatio >= 0.800 * err_min and abcRatio <= 1.100 * err_max and bcdRatio >= 0.400 * err_min and bcdRatio <= 0.800 * err_max and xadRatio >= 0.200 * err_min and xadRatio <= 0.400 * err_max
+                wm_pattern := true
+                array.set(wmLabels, 17, true)
+            else
+                array.set(wmLabels, 17, false)
+            // DragonXD / 龙XD
+            if DragonXD and abcRatio >= 0.380 * err_min and abcRatio <= 0.620 * err_max and bcdRatio >= 0.600 * err_min and bcdRatio <= 0.990 * err_max
+                wm_pattern := true
+                array.set(wmLabels, 18, true)
+            else
+                array.set(wmLabels, 18, false)
+            // SNORM
+            if snorm and xabRatio >= 1.000 * err_min and xabRatio <= 1.000 * err_max and abcRatio >= 1.000 * err_min and abcRatio <= 1.000 * err_max and bcdRatio >= 1.000 * err_min and bcdRatio <= 1.000 * err_max and xadRatio >= 1.000 * err_min and xadRatio <= 1.000 * err_max
+                wm_pattern := true
+                array.set(wmLabels, 19, true)
+            else
+                array.set(wmLabels, 19, false)
+            //Alt Bat / 变异蝙蝠
+            if AltBat and xabRatio >= 0.382 * err_min and xabRatio <= 0.886 * err_max and abcRatio >= 0.382 * err_min and abcRatio <= 0.886 * err_max and bcdRatio >= 2.000 * err_min and bcdRatio <= 3.618 * err_max and xadRatio >= 1.130 * err_min and xadRatio <= 1.130 * err_max
+                wm_pattern := true
+                array.set(wmLabels, 20, true)
+            else
+                array.set(wmLabels, 20, false)
+            // Spiral Drive / 螺旋推进
+            if SpiralDrive and xabRatio >= 0.382 * err_min and xabRatio <= 0.618 * err_max and abcRatio >= 1.272 * err_min and abcRatio <= 1.618 * err_max and bcdRatio >= 0.382 * err_min and bcdRatio <= 0.618 * err_max and cdeRatio >= 1.618 * err_min and cdeRatio <= 2.618 * err_max
+                wm_pattern := true
+                array.set(wmLabels, 21, true)
+            else
+                array.set(wmLabels, 21, false)
+            // Alt Shark / 变异鲨鱼
+            if AltShark and xabRatio >= 0.618 * err_min and xabRatio <= 1.130 * err_max and abcRatio >= 1.000 * err_min and abcRatio <= 1.618 * err_max and bcdRatio >= 1.618 * err_min and bcdRatio <= 3.618 * err_max and xadRatio >= 1.000 * err_min and xadRatio <= 1.618 * err_max 
+                wm_pattern := true
+                array.set(wmLabels, 22, true)
+            else
+                array.set(wmLabels, 22, false)
+        cancelW = false
+        cancelA = false
+        cancelD = false
+        if wm_pattern[1] and x == x[1] and a == a[1] and b == b[1] and c == c[1]
+            line.delete(array.get(wmLine, 0))
+            line.delete(array.get(wmLine, 1))
+            line.delete(array.get(wmLine, 2))
+            line.delete(array.get(wmLine, 3))
+            line.delete(array.get(wmLine, 4))
+            line.delete(array.get(wmLine, 5))
+            line.delete(array.get(wmLine, 6))
+            line.delete(array.get(wmLine, 7))
+            label.delete(array.get(wmlabel, 0))
+            cancelW := true
+            cancelW
+        if abcd_pattern[1] and a == a[1] and b == b[1] and c == c[1]
+            line.delete(array.get(wmLine, 1))
+            line.delete(array.get(wmLine, 2))
+            line.delete(array.get(wmLine, 3))
+            label.delete(array.get(wmlabel, 0))
+            cancelA := true
+            cancelA
+        if double_pattern[1] and a == a[1] and b == b[1] and c == c[1]
+            line.delete(array.get(wmLine, 5))
+            label.delete(array.get(wmlabel, 0))
+            cancelD := true
+            cancelD
+        if wm_pattern
+            xa = line.new(y1=x, y2=a, x1=xBar, x2=aBar, color=zigzagColor, width=zigzagWidth, style=line.style_solid)
+            ab = line.new(y1=a, y2=b, x1=aBar, x2=bBar, color=zigzagColor, width=zigzagWidth, style=line.style_solid)
+            bc = line.new(y1=b, y2=c, x1=bBar, x2=cBar, color=zigzagColor, width=zigzagWidth, style=line.style_solid)
+            cd = line.new(y1=c, y2=d, x1=cBar, x2=dBar, color=zigzagColor, width=zigzagWidth, style=line.style_solid)
+            xb = line.new(y1=x, y2=b, x1=xBar, x2=bBar, color=color.new(zigzagColor, 50), width=zigzagWidth, style=line.style_dashed)
+            bd = line.new(y1=b, y2=d, x1=bBar, x2=dBar, color=color.new(zigzagColor, 50), width=zigzagWidth, style=line.style_dashed)
+            xd = line.new(y1=x, y2=d, x1=xBar, x2=dBar, color=color.new(zigzagColor, 50), width=zigzagWidth, style=line.style_dashed)
+            ac = line.new(y1=a, y2=c, x1=aBar, x2=cBar, color=color.new(zigzagColor, 50), width=zigzagWidth, style=line.style_dashed)
+            array.set(wmLine, 0, xa)
+            array.set(wmLine, 1, ab)
+            array.set(wmLine, 2, bc)
+            array.set(wmLine, 3, cd)
+            array.set(wmLine, 4, xb)
+            array.set(wmLine, 5, bd)
+            array.set(wmLine, 6, xd)
+            array.set(wmLine, 7, ac)
+            array.set(wmtype, 0, dir)
+        if abcd_pattern and not wm_pattern
+            ab = line.new(y1=a, y2=b, x1=aBar, x2=bBar, color=zigzagColor, width=zigzagWidth, style=zigzagStyle)
+            bc = line.new(y1=b, y2=c, x1=bBar, x2=cBar, color=zigzagColor, width=zigzagWidth, style=zigzagStyle)
+            cd = line.new(y1=c, y2=d, x1=cBar, x2=dBar, color=zigzagColor, width=zigzagWidth, style=zigzagStyle)
+            array.set(wmLine, 1, ab)
+            array.set(wmLine, 2, bc)
+            array.set(wmLine, 3, cd)
+            array.set(wmtype, 0, dir)
+        if double_pattern and not wm_pattern
+            bd = line.new(y1=b, y2=d, x1=bBar, x2=dBar, color=zigzagColor, width=zigzagWidth, style=zigzagStyle)
+            array.set(wmLine, 5, bd)
+            array.set(wmtype, 0, dir)
+        if wm_pattern or abcd_pattern or double_pattern
+            array.set(wmlabel, 0, get_harmonic_label(wmLabels, dir, d, dBar))
+    pattern = wm_pattern and not wm_pattern[1] or abcd_pattern and not abcd_pattern[1] or double_pattern and not double_pattern[1]
+zigzag(zigzag1Length, zigzagpivots1, zigzagpivotbars1, zigzagpivotdirs1)
+zigzag(zigzag2Length, zigzagpivots2, zigzagpivotbars2, zigzagpivotdirs2)
+zigzag(zigzag3Length, zigzagpivots3, zigzagpivotbars3, zigzagpivotdirs3)
+zigzag(zigzag4Length, zigzagpivots4, zigzagpivotbars4, zigzagpivotdirs4)
+wm_pattern1 = detect_harmonic_pattern(zigzagpivots1, zigzagpivotbars1, zigzagpivotdirs1, wmLine1, wmLabel1, wmtype1, wmLabels1, zigzag1Color, zigzag1Width, zigzag1Style, showZigZag1)
+wm_pattern2 = detect_harmonic_pattern(zigzagpivots2, zigzagpivotbars2, zigzagpivotdirs2, wmLine2, wmLabel2, wmtype2, wmLabels2, zigzag2Color, zigzag2Width, zigzag2Style, showZigZag2)
+wm_pattern3 = detect_harmonic_pattern(zigzagpivots3, zigzagpivotbars3, zigzagpivotdirs3, wmLine3, wmLabel3, wmtype3, wmLabels3, zigzag3Color, zigzag3Width, zigzag3Style, showZigZag3)
+wm_pattern4 = detect_harmonic_pattern(zigzagpivots4, zigzagpivotbars4, zigzagpivotdirs4, wmLine4, wmLabel4, wmtype4, wmLabels4, zigzag4Color, zigzag4Width, zigzag4Style, showZigZag4)
+
+if wm_pattern1 or wm_pattern2 or wm_pattern3 or wm_pattern4
+    alert(str.format("品种 / Symbol: {0}\n周期 / Timeframe: {1}\n价格 / Price: {2}\n检测到谐波形态 / Harmonic Patterns Detected", syminfo.ticker, timeframe.period, close), alert.freq_once_per_bar_close)
+////////////////////////////// Harmonic Pattern / 谐波形态 //////////////////////////////
+
+
+// Trading Reference Line / 交易参考线
+ShowTradLine = input.bool(false, title="Show Trading Reference Line / 显示交易参考线", group = 'Trading Reference Line / 交易参考线')
+maPeriodTrad = input.int(25, title="MA Period / 均线周期", group = 'Trading Reference Line / 交易参考线')
+maTypeTrad = input.string("HMA / 赫尔移动平均线", title="MA Type / 均线类型", options=["SMA / 简单移动平均线", "EMA / 指数移动平均线", "WMA / 加权移动平均线", "HMA / 赫尔移动平均线", "Kijun v2 / 一目均衡表基准线", "McGinley / 麦金利动态均线","TMA / 三角移动平均线", "DEMA / 双重指数移动平均线", "TEMA / 三重指数移动平均线",  "LSMA / 最小二乘移动平均线", "MF / 移动均值滤波器", "VAMA / 成交量加权移动平均线", "JMA / 尤里克移动平均线"], group = 'Trading Reference Line / 交易参考线')
+DataSourceTrad = input(close, title="Data Source / 数据源", group = 'Trading Reference Line / 交易参考线')
+
+// 通用均线计算函数
+ma(type, DataSourceTrad, maPeriodTrad) =>
+    float result = na
+    if type == 'SMA / 简单移动平均线'
+        result := ta.sma(DataSourceTrad, maPeriodTrad)
+    else if type == 'EMA / 指数移动平均线'
+        result := ta.ema(DataSourceTrad, maPeriodTrad)
+    else if type == 'WMA / 加权移动平均线'
+        result := ta.wma(DataSourceTrad, maPeriodTrad)
+    else if type == 'HMA / 赫尔移动平均线'
+        result := ta.wma(2 * ta.wma(DataSourceTrad, maPeriodTrad / 2) - ta.wma(DataSourceTrad, maPeriodTrad), math.round(math.sqrt(maPeriodTrad)))
+    else if type == 'Kijun v2 / 一目均衡表基准线'
+        result := (ta.highest(high, maPeriodTrad) + ta.lowest(low, maPeriodTrad)) / 2
+    else if type == 'McGinley / 麦金利动态均线'
+        mg = 0.0
+        mg := na(mg[1]) ? ta.ema(DataSourceTrad, maPeriodTrad) : mg[1] + (DataSourceTrad - mg[1]) / (maPeriodTrad * math.pow(DataSourceTrad / mg[1], 4))
+        result := mg
+    else if type == 'TMA / 三角移动平均线'
+        result := (ta.sma(DataSourceTrad, maPeriodTrad) + ta.sma(ta.sma(DataSourceTrad, maPeriodTrad), maPeriodTrad)) / 2
+    else if type == 'DEMA / 双重指数移动平均线'
+        e = ta.ema(DataSourceTrad, maPeriodTrad)
+        result := 2 * e - ta.ema(e, maPeriodTrad)
+    else if type == 'TEMA / 三重指数移动平均线'
+        e1 = ta.ema(DataSourceTrad, maPeriodTrad)
+        e2 = ta.ema(e1, maPeriodTrad)
+        e3 = ta.ema(e2, maPeriodTrad)
+        result := 3 * e1 - 3 * e2 + e3
+    else if type == 'LSMA / 最小二乘移动平均线'
+        result := ta.linreg(DataSourceTrad, maPeriodTrad, 0)
+    else if type == 'MF / 移动均值滤波器'
+        result := ta.ema(ta.ema(DataSourceTrad, maPeriodTrad), maPeriodTrad)
+    else if type == 'VAMA / 成交量加权移动平均线'
+        mid = ta.ema(DataSourceTrad, maPeriodTrad)
+        dev = DataSourceTrad - mid
+        vol_up = ta.highest(dev, 10)
+        vol_down = ta.lowest(dev, 10)
+        result := mid + math.avg(vol_up, vol_down)
+    else if type == 'JMA / 尤里克移动平均线'
+        phaseRatio = 1.5
+        beta = 0.45 * (maPeriodTrad - 1) / (0.45 * (maPeriodTrad - 1) + 2)
+        alpha = math.pow(beta, 2)
+        jma = 0.0
+        e0 = 0.0
+        e0 := (1 - alpha) * DataSourceTrad + alpha * nz(e0[1])
+        e1 = 0.0
+        e1 := (DataSourceTrad - e0) * (1 - beta) + beta * nz(e1[1])
+        e2 = 0.0
+        e2 := (e0 + phaseRatio * e1 - nz(jma[1])) * math.pow(1 - alpha, 2) + math.pow(alpha, 2) * nz(e2[1])
+        jma := e2 + nz(jma[1])
+        result := jma
+    else
+        result := na
+    result
+
+// 计算趋势均线
+trend_ma = ma(maTypeTrad, DataSourceTrad, maPeriodTrad)
+
+// 计算颜色变化
+multy = 0.5
+range_ma = ta.ema(ta.tr, maPeriodTrad)
+upperk = trend_ma + range_ma * multy
+lowerk = trend_ma - range_ma * multy
+color_bar = DataSourceTrad > upperk ? color.new(color.aqua, 0) : DataSourceTrad < lowerk ? color.new(color.fuchsia, 0) : color.white
+
+// 绘制趋势线
+plot(ShowTradLine ? trend_ma : na, color=color_bar, linewidth=1, title="Trading Reference Line / 交易参考线")
+
+// 计算 EMA 200 作为长期趋势线
+EMA200TrendLineHTF = input.timeframe("", title="EMA 200 Timeframe / 时间框架", group = 'Trading Reference Line / 交易参考线')
+EMA200Trend = request.security(syminfo.tickerid, EMA200TrendLineHTF, ta.ema(close, 200))
+
+// 计算 EMA 200 颜色变化（带缓冲区）
+EMA200Range = ta.atr(200)  // 使用 ATR 计算价格波动范围，替代原来的 `ta.ema(ta.tr, 200)`
+EMA200BufferZone = EMA200Range * 1.5  // 设定缓冲区大小，例如 ATR 的 50%
+
+EMA200Upper = EMA200Trend + EMA200BufferZone  // 上界
+EMA200Lower = EMA200Trend - EMA200BufferZone  // 下界
+
+// 颜色变化逻辑（白色缓冲区）
+EMA200Color = close > EMA200Upper ? color.new(color.lime, 0) : close < EMA200Lower ? color.new(color.red, 0) : color.white  // 价格在缓冲区内，显示白色
+
+// 绘制 EMA 200 作为趋势线（带颜色变化）
+plot(ShowTradLine ? EMA200Trend : na, color=EMA200Color, linewidth=2, title="EMA 200 Bull-Bear Dividing Line / 牛熊分界线")
